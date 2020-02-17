@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 # Author: Rickard Löfström <rickard.lofstrom@teliacompany.com>
 
 function print_message() {
@@ -100,7 +100,7 @@ function main() {
   declare GITHUB_EVENT_TYPE GITHUB_EVENT_PATH GITHUB_TOKEN
 
   local terraform_location="${INPUT_TFLINT_ACTION_FOLDER:-$GITHUB_WORKSPACE}"
-  local tflint_opts="${INPUT_TFLINT_ACTION__OPTS:-""}"
+  local tflint_opts="${INPUT_TFLINT_ACTION__OPTS:-}"
   local tflint_action_comment="${INPUT_TFLINT_ACTION_COMMENT:-0}"
 
   local github_event_type="${GITHUB_EVENT_TYPE}"
@@ -113,7 +113,7 @@ function main() {
   ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
   if [ -x "$(command -v tflint)" ]; then
 
-    tflint_output=$(tflint --no-color "${tflint_opts}" "${terraform_location}")
+    tflint_output=$(tflint --no-color $(echo "${tflint_opts}") $(echo "${terraform_location}"))
     tflint_exitcode=${?}
 
     comment_enabled=$(is_comment_enabled "${tflint_action_comment}")
@@ -161,5 +161,5 @@ function main() {
 }
 
 #if [ "${1}" != "--source-only" ]; then
-exec main "${@}"
+main "${@}"
 #fi
