@@ -1,43 +1,165 @@
 #!/bin/bash
-TERRAFORM_LOCATION="${TFLINT_ACTION_TERRAFORM_FOLDER:-"/github/workspace"}"
-TFLINT_OPTS="${TFLINT_ACTION_TFLINT_OPTS:-}"
-TFLINT_OUTPUT=$(tflint "$TFLINT_OPTS" "$TERRAFORM_LOCATION")
-TFLINT_EXITCODE=${?}
+set -euxo pipefail
+# Author: Rickard Löfström <rickard.lofstrom@teliacompany.com>
 
-# TFLint returns the following exit statuses on exit: 0: No issues foun 2: Errors occurred 3: No errors occurred, but issues found
-if [ ${TFLINT_EXITCODE} -eq 0 ]; then
-  TFLINT_STATUS="Success"
-elif [ ${TFLINT_EXITCODE} -eq 2 ]; then
-  TFLINT_STATUS="Failed"
-else
-  [ ${TFLINT_EXITCODE} -eq 3 ]
-  TFLINT_STATUS="Warning"
+function print_message() {
+  echo "$1" >&2
+}
+
+function parse_exitcode() {
+
+  local tflint_exitcode=$1
+  local tflint_status="Failed"
+
+  # TFLint returns the following exit statuses on exit: 0: No issues foun 2: Errors occurred 3: No errors occurred, but issues found
+  if [ "${tflint_exitcode}" -eq 0 ]; then
+    tflint_status="Success"
+  elif [ "${tflint_exitcode}" -eq 2 ]; then
+    tflint_status="Failed"
+  else
+    [ "${tflint_exitcode}" -eq 3 ]
+    tflint_status="Warning"
+  fi
+
+  echo "$tflint_status"
+
+}
+
+function format_comment() {
+
+  local tflint_output="$1"
+  local tflint_status_code="$2"
+  local tflint_status_state
+
+  tflint_status_state=$(parse_exitcode "${tflint_status_code}")
+
+  local comment
+  comment="#### \`Terraform TFlint\` ${tflint_status_state} <details><summary>Show Output</summary>
+  <p>
+  \`\`\`hcl
+  ${tflint_output}
+  \`\`\`
+  </p>
+  </details>"
+
+  echo "$comment"
+}
+
+function get_url() {
+
+  local url=""
+  local github_event_path=$1
+  url=$(jq -r .pull_request.comments_url "${github_event_path}")
+
+  echo "$url"
+}
+
+function is_pull_request() {
+
+  [ "${github_event_name}" == "pull_request" ]
+
+}
+
+function is_comment_enabled() {
+
+  local enabled="0"
+  local is_enabled="$1"
+
+  # Comment on the pull request if necessary.
+  if [ "${is_enabled}" == "1" ] || [ "${is_enabled}" == "true" ]; then
+    enabled=1
+  else
+    enabled=0
+  fi
+
+  echo "${enabled}"
+}
+
+function post_comment() {
+
+  local comment=$1
+  local github_event_name=$2
+  local github_token=$3
+  local url=$4
+  local payload
+
+  if [ -n "${github_token}" ] && [ -n "${url}" ] && [ -n "${comment}" ]; then
+    payload=$(echo "${comment}" | jq -R --slurp '{body: .}')
+    echo "${payload}" | curl -s -S -H "Authorization: token ${github_token}" --header "Content-Type: application/json" --data @- "${url}" >/dev/null
+  fi
+}
+
+function is_comment_available() {
+
+  local tflint_exitcode="$1"
+  [ "${tflint_exitcode}" != "0" ]
+}
+
+function main() {
+
+  declare GITHUB_EVENT_TYPE GITHUB_EVENT_PATH GITHUB_TOKEN
+
+  local terraform_location="${INPUT_TFLINT_ACTION_FOLDER:-$GITHUB_WORKSPACE}"
+  local tflint_opts="${INPUT_TFLINT_ACTION__OPTS:-""}"
+  local tflint_action_comment="${INPUT_TFLINT_ACTION_COMMENT:-0}"
+
+  local github_event_type="${GITHUB_EVENT_TYPE}"
+  local github_event_path="${GITHUB_EVENT_PATH}"
+  local github_token="${GITHUB_TOKEN}"
+
+  local tflint_output
+  local tflint_exitcode
+
+  ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
+  if [ -x "$(command -v tflint)" ]; then
+
+    tflint_output=$(tflint --no-color "${tflint_opts}" "${terraform_location}")
+    tflint_exitcode=${?}
+
+    comment_enabled=$(is_comment_enabled "${tflint_action_comment}")
+    pull_request=$(is_pull_request "${github_event_type}")
+
+    ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
+    if [[ $comment_enabled -eq 1 ]] && [[ $pull_request -eq 1 ]]; then
+
+      if [[ -n $github_token ]]; then
+
+        local comment_available
+        comment_available=$(is_comment_available "${tflint_exitcode}")
+
+        if [[ $comment_available -eq 1 ]]; then
+
+          local comment
+          comment=$(format_comment "${tflint_output}" "${tflint_exitcode}")
+          url=$(get_url "$GITHUB_EVENT_PATH")
+          post_comment "${comment}" "${github_event_type}" "${github_token}" "${url}"
+
+        else
+
+          print_message "No comment is available"
+
+        fi
+
+      else
+
+        print_message "GITHUB_TOKEN is required to perform this action"
+
+      fi
+
+    fi
+
+    echo "::set-output name=tf_lint_output::${tflint_output}"
+    echo "::set-output name=tf_lint_status::${tflint_status}"
+
+    echo "$tflint_status"
+
+  else
+
+    print_message "tflint is required to perform this action"
+  fi
+
+}
+
+if [ "${1}" != "--source-only" ]; then
+  exec main "${@}"
 fi
-
-# Print output.
-echo "${TFLINT_OUTPUT}"
-
-# Comment on the pull request if necessary.
-if [ "${INPUT_TFLINT_ACTIONS_COMMENT}" == "1" ] || [ "${INPUT_TFLINT_ACTIONS_COMMENT}" == "true" ]; then
-  TFLINT_COMMENT=1
-else
-  TFLINT_COMMENT=0
-fi
-
-if [ "${GITHUB_EVENT_NAME}" == "pull_request" ] && [ -n "${GITHUB_TOKEN}" ] && [ "${TFLINT_COMMENT}" == "1" ] && [ "${TFLINT_EXITCODE}" != "0" ]; then
-  COMMENT="#### \`Terraform TFlint Scan\` ${TFLINT_STATUS}
-<details><summary>Show Output</summary>
-<p>
-
-\`\`\`hcl
-$(/go/bin/tflint /github/workspace --no-color)
-\`\`\`
-
-</p>
-</details>"
-  PAYLOAD=$(echo "${COMMENT}" | jq -R --slurp '{body: .}')
-  URL=$(jq -r .pull_request.comments_url "${GITHUB_EVENT_PATH}")
-  echo "${PAYLOAD}" | curl -s -S -H "Authorization: token ${GITHUB_TOKEN}" --header "Content-Type: application/json" --data @- "${URL}" >/dev/null
-fi
-
-exit $TFLINT_EXITCODE

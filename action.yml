@@ -4,15 +4,20 @@ description: "Scan your terraform code with TFLint"
 author: "Telia Company"
 
 inputs:
-  tflint_actions_comment:
+  tflint_action_comment:
     description: "Whether or not to comment on pull requests."
     default: "true"
-  tflint_actions_folder:
+  tflint_action_folder:
     description: "The path to the terraform to lint, relative to workspace (/github/workspace/"
     default: "."
-  tflint_actions_opts:
+  tflint_action_opts:
     description: "Optional commands to TFLint"
     default: ""
+outputs:
+  tflint_output:
+    description: "The output from TFLint"
+  tflint_status:
+    description: "The status from TFLint"
 runs:
   using: "docker"
   image: "./Dockerfile"

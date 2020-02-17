@@ -10,7 +10,7 @@ The action requires the [actions/checkout@v2](https://github.com/actions/checkou
 | -------------------------------- | ----- | ------------------------------------------------------------------------------------- |
 | `TFLINT_ACTION_COMMENT`          | true  | (Optional) Whether or not to comment on GitHub pull requests.                         |
 | `TFLINT_ACTION_TERRAFORM_FOLDER` | `.`   | Which directory the `Terraform` code resides. Relative to the root of the repository. |
-| `TFLINT_ACTION_TFLINT_OPTS`      | none  | Optional arguments to tflint.                                                         |
+| `TFLINT_ACTION_OPTS`             | none  | Optional arguments to tflint.                                                         |
 
 ## Usage
 
