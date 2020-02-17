@@ -2,7 +2,7 @@
 
 This action runs [https://github.com/terraform-linters/tflint](https://github.com/terraform-linters/tflint) on `$GITHUB_WORKSPACE`. TFLint is a Terraform linter focused on possible errors, best practices, etc. (Terraform >= 0.12)
 
-The action requires the https://github.com/actions/checkout before to download the content of your repo inside the docker.
+The action requires the [actions/checkout@v2](https://github.com/actions/checkout) before to download the content of your repo inside the docker.
 
 ## Inputs
 

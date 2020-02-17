@@ -8,7 +8,7 @@ inputs:
     description: "Whether or not to comment on pull requests."
     default: "true"
   tflint_actions_folder:
-    description: "The path to the terraform to lint, relative to workspace"
+    description: "The path to the terraform to lint, relative to workspace (/github/workspace/"
     default: "."
   tflint_actions_opts:
     description: "Optional commands to TFLint"
