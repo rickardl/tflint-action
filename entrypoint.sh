@@ -160,6 +160,6 @@ function main() {
 
 }
 
-if [ "${1}" != "--source-only" ]; then
-  exec main "${@}"
-fi
+#if [ "${1}" != "--source-only" ]; then
+exec main "${@}"
+#fi
