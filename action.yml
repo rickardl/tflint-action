@@ -1,0 +1,21 @@
+# action.yml
+name: "Terraform TFLint Action"
+description: "Scan your terraform code with TFLint"
+author: "Telia Company"
+
+inputs:
+  tflint_actions_comment:
+    description: "Whether or not to comment on pull requests."
+    default: "true"
+  tflint_actions_folder:
+    description: "The path to the terraform to lint, relative to workspace"
+    default: "."
+  tflint_actions_opts:
+    description: "Optional commands to TFLint"
+    default: ""
+runs:
+  using: "docker"
+  image: "./Dockerfile"
+branding:
+  icon: "terminal"
+  color: "red"
