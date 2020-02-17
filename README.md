@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: telia-oss/tflint-action@v1
+      - uses: rickardl/tflint-action@v1
 ```
 
 The above example uses a tagged version (`v1`), you can also opt to use any of the released version.
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Terraform Lint
-        uses: telia-oss/tflint-action@v1
+        uses: rickardl/tflint-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
