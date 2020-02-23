@@ -55,24 +55,19 @@ function get_url() {
 }
 
 function is_pull_request() {
+  local github_event_name
+  github_event_name="$1"
 
-  [ "${github_event_name}" == "pull_request" ]
+  echo [ "${github_event_name}" == "pull_request" ]
 
 }
 
 function is_comment_enabled() {
 
-  local enabled="0"
   local is_enabled="$1"
 
   # Comment on the pull request if necessary.
-  if [ "${is_enabled}" == "1" ] || [ "${is_enabled}" == "true" ]; then
-    enabled=1
-  else
-    enabled=0
-  fi
-
-  echo "${enabled}"
+  echo [ "${is_enabled}" == "1" ] || [ "${is_enabled}" == "true" ]
 }
 
 function post_comment() {
@@ -81,18 +76,28 @@ function post_comment() {
   local github_event_name=$2
   local github_token=$3
   local url=$4
+  local dry_run="${5:-0}"
   local payload
 
   if [ -n "${github_token}" ] && [ -n "${url}" ] && [ -n "${comment}" ]; then
     payload=$(echo "${comment}" | jq -R --slurp '{body: .}')
-    echo "${payload}" | curl -s -S -H "Authorization: token ${github_token}" --header "Content-Type: application/json" --data @- "${url}" >/dev/null
+    if [ "${dry_run}" -eq 1 ]; then
+      echo "::debug::sending comment ${comment} to ${url}"
+      echo "${payload}" | curl -s -S -H "Authorization: token ${github_token}" --header "Content-Type: application/json" --data @- "${url}" >/dev/null
+    else
+      echo "::debug::dry-run sending comment ${comment} to ${url}"
+    fi
+  else
+    echo "::debug::check token, comment is ${comment} and url is ${url}"
+
+    echo 1
   fi
 }
 
 function is_comment_available() {
 
   local tflint_exitcode="$1"
-  [ "${tflint_exitcode}" != "0" ]
+  echo [ "${tflint_exitcode}" != "0" ]
 }
 
 function main() {
@@ -110,24 +115,27 @@ function main() {
   local tflint_output
   local tflint_exitcode
 
-  ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
   if [ -x "$(command -v tflint)" ]; then
 
-    tflint_output=$(tflint --no-color $(echo "${tflint_opts}") $(echo "${terraform_location}"))
+    local tflint_parameters
+    # shellcheck disable=SC2086,SC2116
+    tflint_parameters=$(echo ${tflint_opts} ${terraform_location})
+    # shellcheck disable=SC2086,SC2116
+    tflint_output=$(tflint --no-color $tflint_parameters)
     tflint_exitcode=${?}
 
     comment_enabled=$(is_comment_enabled "${tflint_action_comment}")
     pull_request=$(is_pull_request "${github_event_type}")
 
     ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
-    if [[ $comment_enabled -eq 1 ]] && [[ $pull_request -eq 1 ]]; then
+    if [ "$pull_request" -eq 1 ]; then
 
-      if [[ -n $github_token ]]; then
+      if [ -n "$github_token" ]; then
 
         local comment_available
         comment_available=$(is_comment_available "${tflint_exitcode}")
 
-        if [[ $comment_available -eq 1 ]]; then
+        if [ "$comment_available" -eq 1 ] && [ "$comment_enabled" -eq 1 ]; then
 
           local comment
           comment=$(format_comment "${tflint_output}" "${tflint_exitcode}")
@@ -135,16 +143,16 @@ function main() {
           post_comment "${comment}" "${github_event_type}" "${github_token}" "${url}"
 
         else
-
-          print_message "No comment is available"
+          echo "::debug::No comment available"
 
         fi
 
       else
-
-        print_message "GITHUB_TOKEN is required to perform this action"
+        echo "::debug::GITHUB_TOKEN is required to perform this action"
 
       fi
+    else
+      echo "::debug::The event name was ${GITHUB_EVENT}"
 
     fi
 
@@ -155,11 +163,13 @@ function main() {
 
   else
 
-    print_message "tflint is required to perform this action"
+    echo "::debug::tflint is required to perform this action"
+
   fi
 
 }
 
-#if [ "${1}" != "--source-only" ]; then
-main "${@}"
-#fi
+# shellcheck disable=SC1234
+if [ "${1}" != "--source-only" ]; then
+  main "${@}"
+fi

@@ -8,7 +8,7 @@ RUN curl -L "$(curl -Ls https://api.github.com/repos/terraform-linters/tflint/re
 
 FROM alpine:3.9
 
-LABEL version="1.7.0"
+LABEL version="1.4.0"
 LABEL name="tflint-action"
 LABEL repository="http://github.com/rickardl/tflint-action"
 LABEL homepage="http://github.com/rickardl/tflint-action"
