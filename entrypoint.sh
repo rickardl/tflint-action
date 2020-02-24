@@ -160,11 +160,12 @@ function main() {
     echo "::set-output name=tf_lint_output::${tflint_output}"
     echo "::set-output name=tf_lint_status::${tflint_status}"
 
-    echo "$tflint_status"
+    exit "$tflint_exitcode"
 
   else
 
     echo "::debug::tflint is required to perform this action"
+    exit 1
 
   fi
 
