@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -exo pipefail
 # Author: Rickard Löfström <rickard.lofstrom@teliacompany.com>
 
@@ -102,13 +103,13 @@ function is_comment_available() {
 
 function main() {
 
-  declare GITHUB_EVENT_TYPE GITHUB_EVENT_PATH GITHUB_TOKEN
+  declare GITHUB_EVENT_NAME GITHUB_EVENT_PATH GITHUB_TOKEN
 
   local terraform_location="${INPUT_TFLINT_ACTION_FOLDER:-$GITHUB_WORKSPACE}"
   local tflint_opts="${INPUT_TFLINT_ACTION__OPTS:-}"
   local tflint_action_comment="${INPUT_TFLINT_ACTION_COMMENT:-0}"
 
-  local github_event_type="${GITHUB_EVENT_TYPE}"
+  local github_event_type="${GITHUB_EVENT_NAME}"
   local github_event_path="${GITHUB_EVENT_PATH}"
   local github_token="${GITHUB_TOKEN}"
 
@@ -127,7 +128,7 @@ function main() {
     comment_enabled=$(is_comment_enabled "${tflint_action_comment}")
     pull_request=$(is_pull_request "${github_event_type}")
 
-    ## We should only send a comment if have comments enabled, it's a pull-request and we have a github token
+    ## We should only send a comment if we have comments enabled, it's a pull-request and we have a github token
     if [ "$pull_request" -eq 1 ]; then
 
       if [ -n "$github_token" ]; then
